@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#07142b">
+<title>Airline Flight Operations Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#061126; --panel:#0c1b36; --panel2:#102546; --line:#203a62;
+  --text:#eff7ff; --muted:#91a8c8; --cyan:#16d9ff; --blue:#4a78ff;
+  --green:#25e0b1; --pink:#ff4d9d; --amber:#ffb640; --violet:#a56bff;
+  --shadow:0 18px 45px rgba(0,0,0,.28);
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:Inter,Segoe UI,Arial,sans-serif;background:
+radial-gradient(circle at 82% 0%,rgba(55,86,255,.16),transparent 28%),
+radial-gradient(circle at 30% 100%,rgba(22,217,255,.08),transparent 30%),var(--bg);color:var(--text)}
+body{display:flex;min-height:100vh}
+button,select,input{font:inherit}
+.sidebar{width:245px;position:fixed;inset:0 auto 0 0;padding:22px 16px;background:
+linear-gradient(180deg,rgba(7,20,43,.97),rgba(6,17,38,.97));border-right:1px solid rgba(255,255,255,.07);
+z-index:20;display:flex;flex-direction:column}
+.brand{display:flex;gap:12px;align-items:center;padding:4px 8px 22px}
+.brand-badge{width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,#00d8ff,#5147ff);
+display:grid;place-items:center;box-shadow:0 8px 24px rgba(31,112,255,.35)}
+.brand-badge span{font-size:26px;transform:rotate(-18deg)}
+.brand h1{font-size:15px;line-height:1.2;margin:0;letter-spacing:.4px}
+.brand small{display:block;color:var(--muted);margin-top:4px;font-size:11px}
+.nav{display:grid;gap:8px}
+.nav button{all:unset;cursor:pointer;padding:13px 13px;border-radius:12px;color:#b9c9df;font-size:13px;font-weight:650;
+display:flex;align-items:center;gap:11px;border:1px solid transparent;transition:.2s}
+.nav button:hover{background:#0e2447;color:#fff}
+.nav button.active{color:#fff;background:linear-gradient(90deg,rgba(45,96,255,.29),rgba(0,216,255,.09));border-color:#244b80}
+.nav i{font-style:normal;width:22px;text-align:center;font-size:16px}
+.sidebar-foot{margin-top:auto;padding:15px 10px;color:var(--muted);font-size:11px;line-height:1.55;border-top:1px solid rgba(255,255,255,.07)}
+.app{margin-left:245px;width:calc(100% - 245px);padding:24px 26px 40px}
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:18px}
+.title h2{font-size:25px;margin:0 0 7px;letter-spacing:.2px}
+.title p{margin:0;color:var(--muted);font-size:13px}
+.badge{border:1px solid #284b77;background:#0d2140;border-radius:999px;padding:8px 12px;color:#b8c9e3;font-size:11px;white-space:nowrap}
+.filters{display:grid;grid-template-columns:1.15fr 1.15fr repeat(3,1fr) auto;gap:10px;background:rgba(12,27,54,.87);
+border:1px solid var(--line);border-radius:15px;padding:13px;margin-bottom:17px;box-shadow:var(--shadow)}
+.filter label{display:block;font-size:10px;color:#819abf;text-transform:uppercase;letter-spacing:.9px;margin:0 0 6px 2px}
+.filter select,.filter input{width:100%;min-height:38px;border-radius:10px;border:1px solid #284565;background:#071831;color:#e8f3ff;
+padding:8px 10px;outline:none}
+.filter input::-webkit-calendar-picker-indicator{filter:invert(1)}
+.reset{align-self:end;height:38px;border:1px solid #335b88;background:#102745;color:#dcecff;border-radius:10px;padding:0 14px;cursor:pointer}
+.reset:hover{background:#17365d}
+.page{display:none}.page.active{display:block}
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.kpi{position:relative;overflow:hidden;min-height:115px;padding:16px 14px 14px;border-radius:16px;background:
+linear-gradient(145deg,rgba(17,40,75,.98),rgba(8,25,51,.98));border:1px solid #23446f;box-shadow:var(--shadow)}
+.kpi:before{content:"";position:absolute;width:110px;height:110px;border-radius:50%;right:-44px;top:-55px;background:var(--glow,#16d9ff);filter:blur(32px);opacity:.15}
+.kpi img{position:absolute;right:10px;bottom:8px;width:48px;height:48px;object-fit:contain;opacity:.35}
+.kpi .label{font-size:10px;color:#91a8c8;text-transform:uppercase;letter-spacing:.9px;font-weight:700}
+.kpi .value{font-size:24px;font-weight:800;margin-top:17px;letter-spacing:.2px}
+.kpi .sub{font-size:10px;color:#7f98ba;margin-top:4px}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+.card{background:linear-gradient(145deg,rgba(13,30,59,.96),rgba(8,24,48,.98));border:1px solid #203d66;border-radius:16px;
+padding:15px 16px;box-shadow:var(--shadow);min-height:310px}
+.card h3{margin:0 0 3px;font-size:14px}.card .hint{color:#829abb;font-size:10px;margin-bottom:12px}
+.c6{grid-column:span 6}.c7{grid-column:span 7}.c5{grid-column:span 5}.c12{grid-column:span 12}
+.chartbox{height:255px;position:relative}.chartbox.tall{height:330px}
+.table-wrap{overflow:auto;max-height:360px;border-radius:10px;border:1px solid #1d3658}
+table{width:100%;border-collapse:collapse;font-size:12px}th{position:sticky;top:0;background:#102748;color:#a9bcda;text-align:left;padding:10px 11px}
+td{padding:9px 11px;border-top:1px solid #183253;color:#dbe8f7}tr:hover td{background:#102541}
+.hero{position:relative;display:flex;justify-content:space-between;align-items:center;min-height:180px;background:
+linear-gradient(112deg,#0d2448 0%,#102a56 54%,#0c3761 100%);border:1px solid #27507d;border-radius:18px;
+padding:24px 28px;margin-bottom:16px;overflow:hidden;box-shadow:var(--shadow)}
+.hero:before{content:"";position:absolute;inset:0;background:
+radial-gradient(circle at 77% 20%,rgba(22,217,255,.13),transparent 24%),
+linear-gradient(90deg,transparent 0%,rgba(255,255,255,.025) 48%,transparent 78%);pointer-events:none}
+.hero-copy{position:relative;z-index:3;max-width:59%}
+.hero-kicker{font-size:10px;font-weight:800;letter-spacing:1.5px;color:#5fdfff;margin-bottom:8px}
+.hero h3{font-size:28px;margin:0 0 9px;letter-spacing:.1px}
+.hero p{max-width:700px;color:#a5bad7;font-size:13px;line-height:1.62;margin:0}
+.hero-badge{display:inline-flex;margin-top:14px;border:1px solid #31567f;background:rgba(7,24,49,.68);
+border-radius:999px;padding:7px 11px;color:#b9cee8;font-size:10px;backdrop-filter:blur(5px)}
+.statusline{margin-top:9px;color:#83a1c8;font-size:11px}
+
+/* Embedded takeoff GIF in the hero section */
+.takeoff-scene{
+  position:absolute;
+  z-index:2;
+  right:14px;
+  top:10px;
+  bottom:10px;
+  width:43%;
+  min-width:360px;
+  overflow:hidden;
+  border-radius:14px;
+  background:transparent;
+  pointer-events:none;
+  display:flex;
+  align-items:flex-end;
+  justify-content:flex-end;
+  height: fit-content;
+}
+.takeoff-scene:before{display:none}
+.takeoff-gif{
+  width:100%;
+  max-width:520px;
+  height:auto;
+  object-fit:contain;
+  display:block;
+  background:transparent;
+  user-select:none;
+  -webkit-user-drag:none;
+}
+#pageHeader{display:none}
+.mobile-menu{display:none}
+.mobile-menu-global{position:relative;z-index:40;margin-bottom:10px}
+
+@media(max-width:850px){
+  .takeoff-scene{right:-12px;width:47%;min-width:280px}
+  .takeoff-gif{max-width:430px}
+}
+@media(max-width:520px){
+  .takeoff-scene{
+    width:100%;
+    min-width:0;
+    right:-12px;
+    top:98px;
+    bottom:-8px;
+    opacity:.72;
+  }
+  .takeoff-gif{max-width:340px}
+}
+@media (prefers-reduced-motion:reduce){
+  .takeoff-scene{opacity:1}
+}
+  .plane-takeoff{
+    right:88px;
+    bottom:56px;
+    opacity:1;
+    transform:rotate(-12deg) scale(.84);
+  }
+}
+  .plane-takeoff{
+    right:18%;
+    top:42%;
+    opacity:1;
+    transform:rotate(-12deg);
+  }
+}.plane-takeoff{left:62%;bottom:88px;opacity:1;transform:rotate(-14deg)}}
+@media(max-width:1250px){.kpis{grid-template-columns:repeat(3,1fr)}.filters{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:850px){
+  .sidebar{transform:translateX(-100%);transition:.2s}.sidebar.open{transform:translateX(0)}
+  .app{margin-left:0;width:100%;padding:18px}.mobile-menu{display:inline-flex;background:#0f294c;color:#fff;border:1px solid #2e5684;border-radius:10px;padding:8px 10px}
+  .filters{grid-template-columns:1fr 1fr}.kpis{grid-template-columns:1fr 1fr}.c6,.c7,.c5{grid-column:span 12}.topbar{align-items:center}
+  .hero{min-height:190px;padding:21px}.hero-copy{max-width:63%}.takeoff-scene{right:-34px;width:48%;min-width:300px;opacity:.9}
+}
+@media(max-width:520px){
+  .filters,.kpis{grid-template-columns:1fr}.title h2{font-size:20px}
+  .hero{min-height:220px;align-items:flex-start;padding:20px}.hero-copy{max-width:100%;padding-right:0}
+  .hero h3{font-size:24px}.hero p{max-width:100%;padding-right:12px}
+  .takeoff-scene{width:100%;min-width:0;right:-44px;top:68px;bottom:-20px;opacity:.48}
+  .hero-badge{margin-top:11px}
+}
+</style>
+</head>
+<body>
+<aside class="sidebar" id="sidebar">
+  <div class="brand">
+    <div class="brand-badge"><span>✈</span></div>
+    <div><h1>Airline Operations</h1><small>Performance Analytics</small></div>
+  </div>
+  <nav class="nav">
+    <button class="active" data-page="overview"><i>◉</i> Overview</button>
+    <button data-page="airport"><i>⌖</i> Airport Performance</button>
+    <button data-page="route"><i>⌁</i> Route Performance</button>
+    <button data-page="aircraft"><i>✈</i> Aircraft Performance</button>
+    <button data-page="delay"><i>◷</i> Delay & Operation</button>
+  </nav>
+  <div class="sidebar-foot">Interactive portfolio dashboard<br>Data: Sep 2025 – Aug 2026</div>
+</aside>
+
+<main class="app">
+  <button class="mobile-menu mobile-menu-global" id="menuBtn">☰</button>
+
+  <section class="hero" id="overviewHero">
+    <div class="hero-copy">
+      <h3>Flight Operations Overview</h3>
+      <div class="hero-kicker">AIRLINE PERFORMANCE ANALYTICS</div>
+      <p>Explore airline operational efficiency, punctuality, passenger volume and network performance. Use the filters<br>below to slice every KPI, chart and table instantly.</p>
+      <div class="hero-badge"><span id="recordCount">0</span>&nbsp; filtered flights</div>
+    </div>
+
+    <div class="takeoff-scene" aria-hidden="true">
+      <img class="takeoff-gif" src="flight_takeoff_transparent.webp" alt="Flight takeoff animation">
+    </div>
+  </section>
+
+  <div class="topbar" id="pageHeader">
+    <div class="title">
+      <h2 id="pageTitle">Airport Performance</h2>
+      <p>Airline operational efficiency, punctuality, passengers and network performance.</p>
+    </div>
+  </div>
+
+  <section class="filters">
+    <div class="filter"><label>From date</label><input id="dateFrom" type="date"></div>
+    <div class="filter"><label>To date</label><input id="dateTo" type="date"></div>
+    <div class="filter"><label>Origin</label><select id="origin"></select></div>
+    <div class="filter"><label>Flight status</label><select id="status"></select></div>
+    <div class="filter"><label>Aircraft type</label><select id="aircraftType"></select></div>
+    <button class="reset" id="resetFilters">Reset</button>
+  </section>
+
+  <div id="kpiGrid" class="kpis"></div>
+
+  <section class="page active" id="page-overview">
+    <div class="grid">
+      <div class="card c7"><h3>Monthly Flight Trend</h3><div class="hint">Flights and passengers by month</div><div class="chartbox"><canvas id="overviewMonthly"></canvas></div></div>
+      <div class="card c5"><h3>Flight Status</h3><div class="hint">Operated vs cancelled</div><div class="chartbox"><canvas id="overviewStatus"></canvas></div></div>
+      <div class="card c6"><h3>Average Delay by Origin</h3><div class="hint">Top airports by departure delay</div><div class="chartbox"><canvas id="overviewAirportDelay"></canvas></div></div>
+      <div class="card c6"><h3>On-Time Performance by Route</h3><div class="hint">Routes with the highest flight volume</div><div class="chartbox"><canvas id="overviewRouteOtp"></canvas></div></div>
+      <div class="card c12"><h3>Network Summary</h3><div class="hint">Highest-volume routes in the current filter context</div><div class="table-wrap"><table id="overviewTable"></table></div></div>
+    </div>
+  </section>
+
+  <section class="page" id="page-airport">
+    <div class="grid">
+      <div class="card c6"><h3>Passengers by Origin Airport</h3><div class="hint">Passenger throughput</div><div class="chartbox tall"><canvas id="airportPassengers"></canvas></div></div>
+      <div class="card c6"><h3>Average Delay by Airport</h3><div class="hint">Average departure delay in minutes</div><div class="chartbox tall"><canvas id="airportDelay"></canvas></div></div>
+      <div class="card c6"><h3>OTP by Airport</h3><div class="hint">On-time flights ÷ operated flights</div><div class="chartbox tall"><canvas id="airportOtp"></canvas></div></div>
+      <div class="card c6"><h3>Cancellation Rate by Airport</h3><div class="hint">Cancelled flights ÷ total flights</div><div class="chartbox tall"><canvas id="airportCancel"></canvas></div></div>
+    </div>
+  </section>
+
+  <section class="page" id="page-route">
+    <div class="grid">
+      <div class="card c6"><h3>Passengers by Route</h3><div class="hint">Top routes by passenger volume</div><div class="chartbox tall"><canvas id="routePassengers"></canvas></div></div>
+      <div class="card c6"><h3>Average Delay by Route</h3><div class="hint">Top routes by average departure delay</div><div class="chartbox tall"><canvas id="routeDelay"></canvas></div></div>
+      <div class="card c6"><h3>OTP by Route</h3><div class="hint">High-volume route punctuality</div><div class="chartbox tall"><canvas id="routeOtp"></canvas></div></div>
+      <div class="card c6"><h3>Cancellations by Route</h3><div class="hint">Routes with most cancellations</div><div class="chartbox tall"><canvas id="routeCancel"></canvas></div></div>
+    </div>
+  </section>
+
+  <section class="page" id="page-aircraft">
+    <div class="grid">
+      <div class="card c6"><h3>OTP by Aircraft Type</h3><div class="hint">Punctuality across aircraft families</div><div class="chartbox tall"><canvas id="aircraftOtp"></canvas></div></div>
+      <div class="card c6"><h3>Average Delay by Aircraft Type</h3><div class="hint">Average departure delay</div><div class="chartbox tall"><canvas id="aircraftDelay"></canvas></div></div>
+      <div class="card c6"><h3>Passenger Load Factor</h3><div class="hint">Average load factor by aircraft type</div><div class="chartbox tall"><canvas id="aircraftLoad"></canvas></div></div>
+      <div class="card c6"><h3>Aircraft Performance Matrix</h3><div class="hint">Flights, passengers, OTP and delay</div><div class="table-wrap"><table id="aircraftTable"></table></div></div>
+    </div>
+  </section>
+
+  <section class="page" id="page-delay">
+    <div class="grid">
+      <div class="card c6"><h3>Delay by Departure Hour</h3><div class="hint">Average delay through the operating day</div><div class="chartbox tall"><canvas id="delayHour"></canvas></div></div>
+      <div class="card c6"><h3>Delay by Day of Week</h3><div class="hint">Weekly operating pattern</div><div class="chartbox tall"><canvas id="delayWeekday"></canvas></div></div>
+      <div class="card c6"><h3>Delay by Month</h3><div class="hint">Monthly average delay</div><div class="chartbox tall"><canvas id="delayMonth"></canvas></div></div>
+      <div class="card c6"><h3>Delay Distribution</h3><div class="hint">Flights by delay severity</div><div class="chartbox tall"><canvas id="delayCategory"></canvas></div></div>
+    </div>
+  </section>
+</main>
+
+<script src="data.js"></script>
+<script>
+const F = Object.fromEntries(AIRLINE_FIELDS.map((v,i)=>[v,i]));
+const rows = AIRLINE_DATA;
+const $ = id => document.getElementById(id);
+const charts = {};
+let activePage = "overview";
+
+const palette = ["#16d9ff","#4a78ff","#25e0b1","#ff4d9d","#ffb640","#a56bff","#4dd6a8","#f078ff","#52a9ff","#f6d35c"];
+Chart.defaults.color = "#9eb4d1";
+Chart.defaults.borderColor = "rgba(113,145,185,.18)";
+Chart.defaults.font.family = "Inter, Segoe UI, Arial, sans-serif";
+
+function unique(idx){ return [...new Set(rows.map(r=>r[idx]).filter(v=>v!==null && v!==""))].sort(); }
+function addOptions(el, values, label="All"){ el.innerHTML=`<option value="">${label}</option>`+values.map(v=>`<option>${v}</option>`).join(""); }
+function fmt(n,d=0){ return Number(n||0).toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}); }
+function pct(n){ return `${fmt(n*100,2)}%`; }
+
+const allDates = rows.map(r=>r[F["Date"]]).sort();
+$("dateFrom").value = allDates[0];
+$("dateTo").value = allDates[allDates.length-1];
+$("dateFrom").min = $("dateTo").min = allDates[0];
+$("dateFrom").max = $("dateTo").max = allDates[allDates.length-1];
+addOptions($("origin"), unique(F["Origin"]));
+addOptions($("status"), unique(F["Flight Status"]));
+addOptions($("aircraftType"), unique(F["Aircraft Type"]));
+
+function filteredRows(){
+  const a=$("dateFrom").value,b=$("dateTo").value,o=$("origin").value,s=$("status").value,t=$("aircraftType").value;
+  return rows.filter(r=>(!a||r[F["Date"]]>=a)&&(!b||r[F["Date"]]<=b)&&(!o||r[F["Origin"]]===o)&&(!s||r[F["Flight Status"]]===s)&&(!t||r[F["Aircraft Type"]]===t));
+}
+function metrics(data){
+  let operated=0,cancelled=0,ontime=0,passengers=0,delay=0,delayN=0,load=0,loadN=0;
+  data.forEach(r=>{
+    operated += +r[F["Operated Flag"]]||0; cancelled += +r[F["Cancelled Flag"]]||0; ontime += +r[F["On Time Flight Flag"]]||0;
+    passengers += +r[F["Passengers"]]||0;
+    const d=+r[F["Departure Delay Minutes"]]; if(Number.isFinite(d)){delay+=d;delayN++}
+    const l=+r[F["Load Factor"]]; if(Number.isFinite(l)){load+=l;loadN++}
+  });
+  return {flights:data.length,operated,cancelled,ontime,passengers,avgDelay:delayN?delay/delayN:0,load:loadN?load/loadN:0,
+          otp:operated?ontime/operated:0,cancelRate:data.length?cancelled/data.length:0};
+}
+function renderKPIs(data){
+  const m=metrics(data); $("recordCount").textContent=fmt(data.length);
+  const cards=[
+    ["Total Flights",fmt(m.flights),"Flights in selection","kpi_flights.png","#16d9ff"],
+    ["On-Time Performance",pct(m.otp),"On-time ÷ operated","kpi_otp.png","#25e0b1"],
+    ["Cancellation Rate",pct(m.cancelRate),"Cancelled ÷ total","kpi_cancel.png","#ff4d9d"],
+    ["Average Delay",`${fmt(m.avgDelay,2)} min`,"Departure delay","kpi_delay.png","#a56bff"],
+    ["Total Passengers",fmt(m.passengers),"Passenger volume","kpi_passengers.png","#4a78ff"],
+    ["Load Factor",pct(m.load),"Average utilization","kpi_load.png","#ffb640"]
+  ];
+  $("kpiGrid").innerHTML=cards.map(c=>`<div class="kpi" style="--glow:${c[5]}"><div class="label">${c[0]}</div><div class="value">${c[1]}</div><div class="sub">${c[2]}</div><img src="${c[3]}" alt=""></div>`).join("");
+}
+function group(data, idx){
+  const m=new Map(); data.forEach(r=>{const k=r[idx]??"Unknown"; if(!m.has(k))m.set(k,[]); m.get(k).push(r)}); return m;
+}
+function agg(data, idx, fn){
+  const g=group(data,idx), out=[];
+  for(const [k,a] of g){out.push([k,fn(a)])} return out;
+}
+function destroy(id){ if(charts[id]){charts[id].destroy(); delete charts[id];} }
+function baseOptions(horizontal=false, percent=false){
+ return {responsive:true,maintainAspectRatio:false,animation:{duration:300},plugins:{legend:{labels:{boxWidth:10,usePointStyle:true}}},
+ scales: horizontal ? {x:{grid:{color:"rgba(113,145,185,.12)"},ticks:{callback:v=>percent?`${v}%`:v}},y:{grid:{display:false}}}
+                    : {x:{grid:{display:false}},y:{grid:{color:"rgba(113,145,185,.12)"},ticks:{callback:v=>percent?`${v}%`:v}}}};
+}
+function bar(id,labels,values,{horizontal=false,percent=false,label="",color="#16d9ff"}={}){
+ destroy(id); const ctx=$(id); if(!ctx)return;
+ charts[id]=new Chart(ctx,{type:"bar",data:{labels,datasets:[{label,data:values,backgroundColor:color,borderRadius:6,maxBarThickness:34}]},
+ options:{...baseOptions(horizontal,percent),indexAxis:horizontal?"y":"x",plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>percent?`${c.raw.toFixed(2)}%`:`${label?label+": ":""}${fmt(c.raw,2)}`}}}}});
+}
+function line(id,labels,sets){
+ destroy(id); const ctx=$(id); if(!ctx)return;
+ charts[id]=new Chart(ctx,{type:"line",data:{labels,datasets:sets.map((s,i)=>({label:s.label,data:s.data,borderColor:palette[i],backgroundColor:palette[i]+"22",tension:.28,fill:false,pointRadius:2,yAxisID:s.axis||"y"}))},
+ options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{grid:{display:false}},y:{grid:{color:"rgba(113,145,185,.12)"}},y1:{position:"right",display:sets.some(s=>s.axis==="y1"),grid:{drawOnChartArea:false}}}}});
+}
+function doughnut(id,labels,values){
+ destroy(id); charts[id]=new Chart($(id),{type:"doughnut",data:{labels,datasets:[{data:values,backgroundColor:palette,borderColor:"#0b1d39",borderWidth:3}]},
+ options:{responsive:true,maintainAspectRatio:false,cutout:"68%",plugins:{legend:{position:"bottom",labels:{boxWidth:9,usePointStyle:true}}}}});
+}
+function otp(a){const m=metrics(a);return m.otp*100}
+function cancelRate(a){const m=metrics(a);return m.cancelRate*100}
+function avgDelay(a){return metrics(a).avgDelay}
+function passengers(a){return a.reduce((s,r)=>s+(+r[F["Passengers"]]||0),0)}
+function avgLoad(a){let s=0,n=0;a.forEach(r=>{const x=+r[F["Load Factor"]];if(Number.isFinite(x)){s+=x;n++}});return n?s/n*100:0}
+
+function renderOverview(d){
+ const months=agg(d,F["Month"],a=>({flights:a.length,pax:passengers(a)})).sort((a,b)=>a[0].localeCompare(b[0]));
+ line("overviewMonthly",months.map(x=>x[0]),[{label:"Flights",data:months.map(x=>x[1].flights)},{label:"Passengers",data:months.map(x=>x[1].pax),axis:"y1"}]);
+ const statuses=agg(d,F["Flight Status"],a=>a.length); doughnut("overviewStatus",statuses.map(x=>x[0]),statuses.map(x=>x[1]));
+ let a=agg(d,F["Origin"],avgDelay).sort((x,y)=>y[1]-x[1]).slice(0,10); bar("overviewAirportDelay",a.map(x=>x[0]),a.map(x=>x[1]),{horizontal:true,label:"Min",color:"#a56bff"});
+ const routeGroups=[...group(d,F["Route"]).entries()].map(([k,a])=>[k,a.length,otp(a)]).sort((x,y)=>y[1]-x[1]).slice(0,10);
+ bar("overviewRouteOtp",routeGroups.map(x=>x[0]),routeGroups.map(x=>x[2]),{horizontal:true,percent:true,color:"#25e0b1"});
+ const rowsT=[...group(d,F["Route"]).entries()].map(([k,a])=>{const m=metrics(a);return[k,a.length,passengers(a),m.avgDelay,m.otp*100,m.cancelRate*100]}).sort((a,b)=>b[1]-a[1]).slice(0,15);
+ table("overviewTable",["Route","Flights","Passengers","Avg Delay","OTP","Cancel Rate"],rowsT.map(r=>[r[0],fmt(r[1]),fmt(r[2]),fmt(r[3],2)+" min",fmt(r[4],2)+"%",fmt(r[5],2)+"%"]));
+}
+function renderAirport(d){
+ let a=agg(d,F["Origin"],passengers).sort((x,y)=>y[1]-x[1]); bar("airportPassengers",a.map(x=>x[0]),a.map(x=>x[1]),{horizontal:true,color:"#4a78ff"});
+ a=agg(d,F["Origin"],avgDelay).sort((x,y)=>y[1]-x[1]); bar("airportDelay",a.map(x=>x[0]),a.map(x=>x[1]),{horizontal:true,color:"#a56bff"});
+ a=agg(d,F["Origin"],otp).sort((x,y)=>y[1]-x[1]); bar("airportOtp",a.map(x=>x[0]),a.map(x=>x[1]),{horizontal:true,percent:true,color:"#25e0b1"});
+ a=agg(d,F["Origin"],cancelRate).sort((x,y)=>y[1]-x[1]); bar("airportCancel",a.map(x=>x[0]),a.map(x=>x[1]),{horizontal:true,percent:true,color:"#ff4d9d"});
+}
+function renderRoute(d){
+ let a=agg(d,F["Route"],passengers).sort((x,y)=>y[1]-x[1]).slice(0,15); bar("routePassengers",a.map(x=>x[0]),a.map(x=>x[1]),{horizontal:true,color:"#4a78ff"});
+ a=agg(d,F["Route"],avgDelay).filter(x=>group(d,F["Route"]).get(x[0]).length>=50).sort((x,y)=>y[1]-x[1]).slice(0,15); bar("routeDelay",a.map(x=>x[0]),a.map(x=>x[1]),{horizontal:true,color:"#a56bff"});
+ const gs=[...group(d,F["Route"]).entries()].map(([k,a])=>[k,a.length,otp(a)]).filter(x=>x[1]>=50).sort((x,y)=>y[1]-x[1]).slice(0,15);
+ bar("routeOtp",gs.map(x=>x[0]),gs.map(x=>x[2]),{horizontal:true,percent:true,color:"#25e0b1"});
+ a=agg(d,F["Route"],x=>metrics(x).cancelled).sort((x,y)=>y[1]-x[1]).slice(0,15); bar("routeCancel",a.map(x=>x[0]),a.map(x=>x[1]),{horizontal:true,color:"#ff4d9d"});
+}
+function renderAircraft(d){
+ let a=agg(d,F["Aircraft Type"],otp).sort((x,y)=>y[1]-x[1]); bar("aircraftOtp",a.map(x=>x[0]),a.map(x=>x[1]),{percent:true,color:"#25e0b1"});
+ a=agg(d,F["Aircraft Type"],avgDelay).sort((x,y)=>y[1]-x[1]); bar("aircraftDelay",a.map(x=>x[0]),a.map(x=>x[1]),{color:"#a56bff"});
+ a=agg(d,F["Aircraft Type"],avgLoad).sort((x,y)=>y[1]-x[1]); bar("aircraftLoad",a.map(x=>x[0]),a.map(x=>x[1]),{percent:true,color:"#ffb640"});
+ const t=[...group(d,F["Aircraft Type"]).entries()].map(([k,a])=>{const m=metrics(a);return[k,a.length,passengers(a),m.otp*100,m.avgDelay,m.load*100]}).sort((a,b)=>b[1]-a[1]);
+ table("aircraftTable",["Aircraft Type","Flights","Passengers","OTP","Avg Delay","Load Factor"],t.map(r=>[r[0],fmt(r[1]),fmt(r[2]),fmt(r[3],2)+"%",fmt(r[4],2)+" min",fmt(r[5],2)+"%"]));
+}
+function renderDelay(d){
+ let a=agg(d,F["Departure Hour"],avgDelay).sort((x,y)=>+x[0]-+y[0]); line("delayHour",a.map(x=>String(x[0]).padStart(2,"0")+":00"),[{label:"Avg Delay",data:a.map(x=>x[1])}]);
+ const dayOrder=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]; a=agg(d,F["Day of Week"],avgDelay).sort((x,y)=>dayOrder.indexOf(x[0])-dayOrder.indexOf(y[0]));
+ bar("delayWeekday",a.map(x=>x[0]),a.map(x=>x[1]),{color:"#16d9ff"});
+ a=agg(d,F["Month"],avgDelay).sort((x,y)=>x[0].localeCompare(y[0])); line("delayMonth",a.map(x=>x[0]),[{label:"Avg Delay",data:a.map(x=>x[1])}]);
+ const cats={"On time / early":0,"1–15 min":0,"16–30 min":0,"31–60 min":0,"60+ min":0};
+ d.forEach(r=>{const x=+r[F["Departure Delay Minutes"]]||0;if(x<=0)cats["On time / early"]++;else if(x<=15)cats["1–15 min"]++;else if(x<=30)cats["16–30 min"]++;else if(x<=60)cats["31–60 min"]++;else cats["60+ min"]++});
+ doughnut("delayCategory",Object.keys(cats),Object.values(cats));
+}
+function table(id,headers,rows){
+ const el=$(id); el.innerHTML="<thead><tr>"+headers.map(h=>`<th>${h}</th>`).join("")+"</tr></thead><tbody>"+rows.map(r=>"<tr>"+r.map(v=>`<td>${v}</td>`).join("")+"</tr>").join("")+"</tbody>";
+}
+function render(){
+ const d=filteredRows(); renderKPIs(d);
+ if(activePage==="overview")renderOverview(d);
+ if(activePage==="airport")renderAirport(d);
+ if(activePage==="route")renderRoute(d);
+ if(activePage==="aircraft")renderAircraft(d);
+ if(activePage==="delay")renderDelay(d);
+}
+["dateFrom","dateTo","origin","status","aircraftType"].forEach(id=>$(id).addEventListener("change",render));
+$("resetFilters").addEventListener("click",()=>{
+ $("dateFrom").value=allDates[0];$("dateTo").value=allDates[allDates.length-1];$("origin").value="";$("status").value="";$("aircraftType").value="";render();
+});
+document.querySelectorAll(".nav button").forEach(b=>b.addEventListener("click",()=>{
+ document.querySelectorAll(".nav button").forEach(x=>x.classList.remove("active"));b.classList.add("active");
+ activePage=b.dataset.page;document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));$("page-"+activePage).classList.add("active");
+ const titles={overview:"Overview",airport:"Airport Performance",route:"Route Performance",aircraft:"Aircraft Performance",delay:"Delay & Operation"};
+ const subtitles={
+   airport:"Airport punctuality, passenger throughput, delays and cancellation performance.",
+   route:"Route-level passenger volume, delay, on-time performance and cancellations.",
+   aircraft:"Aircraft-family utilization, punctuality, load factor and delay performance.",
+   delay:"Operating delay patterns by hour, weekday, month and severity."
+ };
+ const isOverview=activePage==="overview";
+ $("overviewHero").style.display=isOverview?"flex":"none";
+ $("pageHeader").style.display=isOverview?"none":"flex";
+ if(!isOverview){
+   $("pageTitle").textContent=titles[activePage];
+   $("pageHeader").querySelector("p").textContent=subtitles[activePage]||"Airline performance analytics.";
+ }
+ $("sidebar").classList.remove("open"); setTimeout(render,20);
+}));
+$("menuBtn").addEventListener("click",()=>$("sidebar").classList.toggle("open"));
+$("overviewHero").style.display="flex";
+$("pageHeader").style.display="none";
+render();
+</script>
+</body>
+</html>
